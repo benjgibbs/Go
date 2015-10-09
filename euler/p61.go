@@ -45,7 +45,8 @@ func main() {
 	octos := seq(1000, 9999, func(n int) int { return n * (3*n - 2) })
 	fmt.Printf("Sizes: trias=%d, squas=%d, pents=%d, hexes=%d, hepts=%d, octos=%d\n",
 		len(trias), len(squas), len(pents), len(hexes), len(hepts), len(octos))
-	for _, tv := range octos {
+
+	for t, tv := range octos {
 		for _, sv := range squas {
 			if sv == tv {
 				continue
@@ -66,11 +67,13 @@ func main() {
 							if ov == hv || ov == xv || ov == pv || ov == sv || ov == tv {
 								continue
 							}
-							if !hasMatchingEnds([]int{tv, sv, pv, xv, hv, ov}) {
+							parts := []int{tv, sv, pv, xv, hv, ov}
+							if !hasMatchingEnds(parts) {
 								continue
 							}
-							for _, perm := range permutations.Heap([]int{tv, sv, pv, xv, hv, ov}) {
-								// fmt.Printf("Checking: %d\n", perm)
+							fmt.Printf("Matching ends found: %d (%f)\n", parts, float32(t+1)/float32(len(octos)))
+							for _, perm := range permutations.Heap(parts) {
+								//fmt.Printf("Checking: %d\n", perm)
 								if isCircular(perm) {
 									fmt.Printf("Found: %d\n", perm)
 									return
