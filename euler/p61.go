@@ -46,12 +46,12 @@ func main() {
 	fmt.Printf("Sizes: trias=%d, squas=%d, pents=%d, hexes=%d, hepts=%d, octos=%d\n",
 		len(trias), len(squas), len(pents), len(hexes), len(hepts), len(octos))
 
-	for t, tv := range octos {
-		for _, sv := range squas {
+	for t, tv := range trias {
+		for s, sv := range squas {
 			if sv == tv {
 				continue
 			}
-			for _, pv := range pents {
+			for p, pv := range pents {
 				if pv == sv || pv == tv {
 					continue
 				}
@@ -71,7 +71,10 @@ func main() {
 							if !hasMatchingEnds(parts) {
 								continue
 							}
-							fmt.Printf("Matching ends found: %d (%f)\n", parts, float32(t+1)/float32(len(octos)))
+							fmt.Printf("Matching ends found: %d (%f/%f/%f)\n", parts,
+								float32(t+1)/float32(len(trias)),
+								float32(s+1)/float32(len(squas)),
+								float32(p+1)/float32(len(pents)))
 							for _, perm := range permutations.Heap(parts) {
 								//fmt.Printf("Checking: %d\n", perm)
 								if isCircular(perm) {
@@ -83,7 +86,9 @@ func main() {
 					}
 				}
 			}
+			fmt.Printf("Processed Square %d (%d/%d)\n", sv, s, len(squas))
 		}
+		fmt.Printf("Processed Triangle %d (%d/%d)\n", tv, t, len(trias))
 	}
 }
 
