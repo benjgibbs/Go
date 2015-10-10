@@ -2,26 +2,20 @@ package main
 
 import (
 	"fmt"
-	"github.com/benjgibbs/permutations"
 )
 
-func match(i, j int) bool {
-	p1 := (i % 100)
-	p2 := (j / 100)
-	return p1 == p2
+/**
+ * Takes a 4 digit in and returns the first two
+ */
+func front(i int) int {
+	return i % 100
 }
 
-func isCircular(is []int) bool {
-	for i := 0; i < len(is)-1; i++ {
-		if !match(is[i], is[i+1]) {
-			return false
-		}
-	}
-	return match(is[len(is)-1], is[0])
-}
-
-func check(is []int) {
-	fmt.Printf("%s: %t\n", is, isCircular(is))
+/**
+ * Takes a 4 digit int and returns the last two
+ */
+func back(i int) int {
+	return i / 100
 }
 
 func seq(min, max int, next func(n int) int) []int {
@@ -36,6 +30,39 @@ func seq(min, max int, next func(n int) int) []int {
 	return res
 }
 
+type Number struct {
+	value int
+	front int
+	back int
+	class int
+}
+
+func newNumber(x,c int) *Number {
+	result := Number {
+		value: x,
+		front: front(x),
+		back: back(x),
+		class: c }
+	return &result
+}
+
+func populate(xs []int, c int, f,b *map[int][]*Number) {
+	for _,x := range xs {
+		n := newNumber(x,c)
+		f[(*n).front] = append(f[(*n).front],n)
+		b[(*n).back] = append(f[(*n).back],n)
+	}
+}
+
+func contains(xs []int, t int) bool {
+	for _,x := range xs {
+		if x == t {
+			return true
+		}
+	}
+	return false
+}
+
 func main() {
 	trias := seq(1000, 9999, func(n int) int { return n * (n - 1) / 2 })
 	squas := seq(1000, 9999, func(n int) int { return n * n })
@@ -46,80 +73,54 @@ func main() {
 	fmt.Printf("Sizes: trias=%d, squas=%d, pents=%d, hexes=%d, hepts=%d, octos=%d\n",
 		len(trias), len(squas), len(pents), len(hexes), len(hepts), len(octos))
 
-	for t, tv := range trias {
-		for s, sv := range squas {
-			if sv == tv {
-				continue
-			}
-			for p, pv := range pents {
-				if pv == sv || pv == tv {
-					continue
-				}
-				for _, xv := range hexes {
-					if xv == pv || xv == sv || xv == tv {
-						continue
-					}
-					for _, hv := range hepts {
-						if hv == xv || hv == pv || hv == sv || hv == tv {
-							continue
-						}
-						for _, ov := range octos {
-							if ov == hv || ov == xv || ov == pv || ov == sv || ov == tv {
-								continue
-							}
-							parts := []int{tv, sv, pv, xv, hv, ov}
-							if !hasMatchingEnds(parts) {
-								continue
-							}
-							fmt.Printf("Matching ends found: %d (%f/%f/%f)\n", parts,
-								float32(t+1)/float32(len(trias)),
-								float32(s+1)/float32(len(squas)),
-								float32(p+1)/float32(len(pents)))
-							for _, perm := range permutations.Heap(parts) {
-								//fmt.Printf("Checking: %d\n", perm)
-								if isCircular(perm) {
-									fmt.Printf("Found: %d\n", perm)
-									return
-								}
-							}
-						}
-					}
-				}
-			}
-			fmt.Printf("Processed Square %d (%d/%d)\n", sv, s, len(squas))
+	fronts := make(map[int][]*Number)
+	backs  := make(map[int][]*Number)
+	populate(trias, 3, &fronts, &backs)
+	populate(squas, 4, &fronts, &backs)
+	populate(pents, 5, &fronts, &backs)
+	populate(hexes, 6, &fronts, &backs)
+	populate(hepts, 7, &fronts, &backs)
+	populate(octos, 8, &fronts, &backs)
+
+	for _,v := backs {
+		visited := []Number{}
+		recurse(v,&visited,&fronts,&backs)
+		if len(visited) == 6 {
+			fmt.Printf("Found it: %d", visited)
 		}
-		fmt.Printf("Processed Triangle %d (%d/%d)\n", tv, t, len(trias))
 	}
 }
 
-func hasMatchingEnds(xs []int) bool {
-	begins := make(map[int]int)
-	ends := make(map[int]int)
-	for _, x := range xs {
-		b := x / 100
-		begins[b]++
-		e := x % 100
-		ends[e]++
-	}
-	for b, c := range begins {
-		if c != ends[b] {
-			return false
+func recurse(v, visited []*Number,fronts, backs *map[int][]*Number) {
+	for _,b := range v {
+		visited := append(visited,b.class)
+		for _, f := range fronts[b.back]{
+			if !contains(visited, f) {
+				recurse(b,visited,fronts,backs)
+			}
 		}
 	}
-	return true
 }
 
-func showGivens() {
-	trias := seq(1, 70, func(n int) int { return n * (n - 1) / 2 })
-	squas := seq(1, 70, func(n int) int { return n * n })
-	pents := seq(1, 70, func(n int) int { return n * (3*n - 1) / 2 })
-	hexes := seq(1, 70, func(n int) int { return n * (2*n - 1) })
-	hepts := seq(1, 70, func(n int) int { return n * (5*n - 3) / 2 })
-	octos := seq(1, 70, func(n int) int { return n * (3*n - 2) })
-	fmt.Printf("trias=%d\n", trias)
-	fmt.Printf("squas=%d\n", squas)
-	fmt.Printf("pents=%d\n", pents)
-	fmt.Printf("hexes=%d\n", hexes)
-	fmt.Printf("hepts=%d\n", hepts)
-	fmt.Printf("octos=%d\n", octos)
-}
+
+//	for _, ord := range permutations.heap([]int{3, 4, 5, 6, 7, 8}) {
+//		for i = 0; i < len(ord)-1; i++ {
+//			x := ord[i]
+//			y := ord[i+1]
+//			var ends *Ends
+//			switch x {
+//			case 3:
+//				ends = &triaEnds
+//			case 4:
+//				ends = &squaEnds
+//			case 5:
+//				ends = &pentEnds
+//			case 6:
+//				ends = &hexeEnds
+//			case 7:
+//				ends = &heptEnds
+//			case 8:
+//				ends = &octaEnds
+//			}
+//			for _,starts := ends.back
+//		}
