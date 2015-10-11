@@ -33,30 +33,30 @@ func seq(min, max int, next func(n int) int) []int {
 type Number struct {
 	value int
 	front int
-	back int
+	back  int
 	class int
 }
 
-func newNumber(x,c int) *Number {
-	result := Number {
+func newNumber(x, c int) *Number {
+	result := Number{
 		value: x,
 		front: front(x),
-		back: back(x),
-		class: c }
+		back:  back(x),
+		class: c}
 	return &result
 }
 
-func populate(xs []int, c int, f,b *map[int][]*Number) {
-	for _,x := range xs {
-		n := newNumber(x,c)
-		f[(*n).front] = append(f[(*n).front],n)
-		b[(*n).back] = append(f[(*n).back],n)
+func populate(xs []int, c int, f, b *map[int][]Number) {
+	for _, x := range xs {
+		n := newNumber(x, c)
+		(*f)[(*n).front] = append((*f)[(*n).front], *n)
+		(*b)[(*n).back] = append((*b)[(*n).back], *n)
 	}
 }
 
-func contains(xs []int, t int) bool {
-	for _,x := range xs {
-		if x == t {
+func contains(xs []Number, t Number) bool {
+	for _, x := range xs {
+		if x.class == t.class {
 			return true
 		}
 	}
@@ -73,8 +73,8 @@ func main() {
 	fmt.Printf("Sizes: trias=%d, squas=%d, pents=%d, hexes=%d, hepts=%d, octos=%d\n",
 		len(trias), len(squas), len(pents), len(hexes), len(hepts), len(octos))
 
-	fronts := make(map[int][]*Number)
-	backs  := make(map[int][]*Number)
+	fronts := make(map[int][]Number)
+	backs := make(map[int][]Number)
 	populate(trias, 3, &fronts, &backs)
 	populate(squas, 4, &fronts, &backs)
 	populate(pents, 5, &fronts, &backs)
@@ -82,26 +82,33 @@ func main() {
 	populate(hepts, 7, &fronts, &backs)
 	populate(octos, 8, &fronts, &backs)
 
-	for _,v := backs {
-		visited := []Number{}
-		recurse(v,&visited,&fronts,&backs)
-		if len(visited) == 6 {
-			fmt.Printf("Found it: %d", visited)
-		}
-	}
-}
-
-func recurse(v, visited []*Number,fronts, backs *map[int][]*Number) {
-	for _,b := range v {
-		visited := append(visited,b.class)
-		for _, f := range fronts[b.back]{
-			if !contains(visited, f) {
-				recurse(b,visited,fronts,backs)
+	for _, v := range backs {
+		for _, n := range v {
+			fmt.Printf("Checking %d\n", n)
+			visited := []Number{}
+			recurse(true, n, &visited, &fronts, &backs)
+			if len(visited) == 6 {
+				fmt.Printf("Found it: %d", visited)
+				return
 			}
 		}
 	}
 }
 
+func recurse(isFront bool, v Number, visited *[]Number, fronts, backs *map[int][]Number) {
+	*visited = append(*visited, v)
+	var next []Number
+	if isFront {
+		next = (*fronts)[v.back]
+	} else {
+		next = (*backs)[v.front]
+	}
+	for _, f := range next {
+		if !contains(*visited, f) {
+			recurse(!isFront, f, visited, fronts, backs)
+		}
+	}
+}
 
 //	for _, ord := range permutations.heap([]int{3, 4, 5, 6, 7, 8}) {
 //		for i = 0; i < len(ord)-1; i++ {
