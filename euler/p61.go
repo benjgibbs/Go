@@ -56,7 +56,7 @@ func populate(xs []int, c int, f, b *map[int][]Number) {
 
 func contains(xs []Number, t Number) bool {
 	for _, x := range xs {
-		if x.class == t.class {
+		if x.class == t.class || x.value == t.value {
 			return true
 		}
 	}
@@ -88,7 +88,11 @@ func main() {
 			visited := []Number{}
 			recurse(true, n, &visited, &fronts, &backs)
 			if len(visited) == 6 {
-				fmt.Printf("Found it: %d", visited)
+				var sum int
+				for _, x := range visited {
+					sum += x.value
+				}
+				fmt.Printf("Found it: %d (%d)", sum, visited)
 				return
 			}
 		}
