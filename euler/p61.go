@@ -4,16 +4,12 @@ import (
 	"fmt"
 )
 
-/**
- * Takes a 4 digit in and returns the first two
- */
+const CYCLE_LEN = 6
+
 func front(i int) int {
 	return i / 100
 }
 
-/**
- * Takes a 4 digit int and returns the last two
- */
 func back(i int) int {
 	return i % 100
 }
@@ -65,35 +61,19 @@ func main() {
 	hepts := seq(1000, 9999, func(n int) int { return n * (5*n - 3) / 2 })
 	octos := seq(1000, 9999, func(n int) int { return n * (3*n - 2) })
 
-	fmt.Printf("Sizes: trias=%d, squas=%d, pents=%d, hexes=%d, hepts=%d, octos=%d\n",
-		len(trias), len(squas), len(pents), len(hexes), len(hepts), len(octos))
-	/*
-		populate(trias, 3, &fronts, &backs)
-		populate(squas, 4, &fronts, &backs)
-		populate(pents, 5, &fronts, &backs)
-		populate(hexes, 6, &fronts, &backs)
-		populate(hepts, 7, &fronts, &backs)
-		populate(octos, 8, &fronts, &backs)
-		const CYCLE_LEN = 6
-	*/
-	populate([]int{1122}, 1, &fronts, &backs)
-	populate([]int{2244}, 2, &fronts, &backs)
-	populate([]int{2233}, 2, &fronts, &backs)
-	populate([]int{3344}, 3, &fronts, &backs)
-	populate([]int{3311}, 3, &fronts, &backs)
-	const CYCLE_LEN = 3
-
-	// fmt.Printf("Fronts: %d\n", fronts)
-	// fmt.Printf("Backs: %d\n", backs)
-	// fmt.Println("")
+	populate(trias, 3, &fronts, &backs)
+	populate(squas, 4, &fronts, &backs)
+	populate(pents, 5, &fronts, &backs)
+	populate(hexes, 6, &fronts, &backs)
+	populate(hepts, 7, &fronts, &backs)
+	populate(octos, 8, &fronts, &backs)
 
 	for _, front := range fronts {
 		for _, start := range front {
-
+			var found bool
 			visited := []Number{}
-			visited = recurse(start, visited, fronts)
-
-			if len(visited) == CYCLE_LEN && visited[0].front == visited[CYCLE_LEN-1].back {
+			visited, found = recurse(start, visited, fronts)
+			if found {
 				var sum int
 				for _, x := range visited {
 					sum += x.value
@@ -101,38 +81,33 @@ func main() {
 				fmt.Printf("Found it: %d (%d)\n", sum, visited)
 				return
 			}
-			if true || len(visited) == CYCLE_LEN {
-				fmt.Printf("Not found. start=%d, len=%d, route=%d\n", start, len(visited), visited)
-				//fmt.Println()
-			}
 		}
 	}
 }
 
-func recurse(v Number, visited []Number, fronts map[int][]Number) []Number {
+func recurse(v Number, visited []Number, fronts map[int][]Number) ([]Number, bool) {
 	visited = append(visited, v)
-	//fmt.Printf("Recursing. v=%d, visitied=%d\n", v, visited)
+	if len(visited) == CYCLE_LEN && visited[0].front == visited[CYCLE_LEN-1].back {
+		return visited, true
+	}
+
 	next := fronts[v.back]
 	for _, f := range next {
 		if eligible(visited, f) {
-			return recurse(f, visited, fronts)
+			res, found := recurse(f, visited, fronts)
+			if found {
+				return res, true
+			}
 		}
 	}
-	return visited
+	return visited, false
 }
 
 func eligible(seen []Number, t Number) bool {
 	for _, x := range seen {
 		if x.class == t.class || x.value == t.value {
-			//fmt.Printf("Not eligbile. %d/%d %d/%d\n", x.class, t.class, x.value, t.value)
 			return false
 		}
 	}
-	//fmt.Printf("Eligible %d\n", t)
 	return true
 }
-
-//[{7140 40 71 6}
-//    {4371 71 43 3}
-//    {4371 71 43 3}
-//       {6943 43 69 7}]
