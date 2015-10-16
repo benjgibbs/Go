@@ -15,7 +15,7 @@ func gen(term int) *big.Int {
 	return big.NewInt(int64(next))
 }
 
-func main() {
+func p65() {
 	h1, h2, k1, k2 := big.NewInt(3), big.NewInt(2), big.NewInt(1), big.NewInt(1)
 	for term := 2; term < 100; term++ {
 		a := gen(term)

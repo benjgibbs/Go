@@ -50,7 +50,7 @@ func populate(xs []int, c int, f, b *map[int][]Number) {
 	}
 }
 
-func main() {
+func p61() {
 	fronts := make(map[int][]Number)
 	backs := make(map[int][]Number)
 

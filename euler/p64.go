@@ -51,7 +51,7 @@ func countOddsUpTo(bound int) int {
 	return oddCount
 }
 
-func main() {
+func p64() {
 	fmt.Printf("Odd fractions up to %d number %d\n", 13, countOddsUpTo(13))
 	fmt.Printf("Odd fractions up to %d number %d\n", 10000, countOddsUpTo(10000))
 }
