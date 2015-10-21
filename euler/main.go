@@ -1,5 +1,5 @@
 package main
 
 func main() {
-	p387()
+	p74()
 }
