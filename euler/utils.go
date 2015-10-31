@@ -1,5 +1,10 @@
 package main
 
+import (
+	"log"
+	"strconv"
+)
+
 func fact(n uint64) uint64 {
 	var res uint64 = 1
 	for n > 0 {
@@ -7,6 +12,14 @@ func fact(n uint64) uint64 {
 		n--
 	}
 	return res
+}
+
+func atoi(s string) int {
+	i, e := strconv.Atoi(s)
+	if e != nil {
+		log.Fatal(e)
+	}
+	return i
 }
 
 func containsInt(x int, xs []int) (bool, int) {
