@@ -4,12 +4,23 @@ import (
 	"fmt"
 )
 
-func nextRepUnit(base, last uint) {
-	last*base + 1
+func nextRepUnit(base, last uint) uint {
+	return last*base + 1
 }
 
 func p346() {
-	memoryBound()
+	const limit = 10
+	for upto := uint(1); upto < limit; upto++ {
+		for b1 := uint(1); b1 < upto; b1++ {
+			for v1 := 1; v1 < upto; v1 = nextRepUnit(v1, b1) {
+				lastRep := make(map[uint]uint)
+				for  b2 := uint(1); b2 < upto; b2 = b2++ {
+					for v2 := lastRep
+						fmt.Printf("repunit: v1=%d, b1=%d\n", v1, b1)
+				}
+			}
+		}
+	}
 }
 
 func repUnit(base, limit uint) []uint {
