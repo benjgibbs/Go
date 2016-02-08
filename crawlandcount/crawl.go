@@ -17,6 +17,17 @@ import (
 const MAX_DEPTH = 3
 const POOL_SIZE = 16
 
+const (
+	LOOKUP = 0
+	ADD    = 1
+)
+
+type UrlQuery struct {
+	action int
+	url    string
+	result chan bool
+}
+
 type CrawlFnArg struct {
 	depth   int
 	url     string
@@ -73,7 +84,7 @@ func fromFile() io.Reader {
 	return file
 }
 
-func crawl(depth int, url string, workers ArgQueue, results ResultQueue, count *int64) {
+func crawl(depth int, url string, workers ArgQueue, results ResultQueue, count *int64, urlQuery chan UrlQuery) {
 	log.Println("Crawling:", url, "at depth:", depth)
 	reader := fromUrl(url)
 	root, err := xmlpath.ParseHTML(reader)
@@ -85,10 +96,17 @@ func crawl(depth int, url string, workers ArgQueue, results ResultQueue, count *
 		links := findLinks(root)
 		log.Println("Found", len(links), "links in", url)
 		for _, link := range links {
-			atomic.AddInt64(count, 1)
-			go func() {
-				workers <- CrawlFnArg{depth + 1, url + link, workers}
-			}()
+			urlExists := make(chan bool)
+			urlQuery <- UrlQuery{LOOKUP, link, urlExists}
+			if !<-urlExists {
+				atomic.AddInt64(count, 1)
+				go func() {
+					workers <- CrawlFnArg{depth + 1, url + link, workers}
+				}()
+			} else {
+				log.Println("Skipping", url, " Already exists")
+			}
+
 		}
 	}
 	count2 := atomic.AddInt64(count, -1)
@@ -102,13 +120,13 @@ func crawl(depth int, url string, workers ArgQueue, results ResultQueue, count *
 func main() {
 	var count int64 = 1
 	results := make(ResultQueue)
-
+	urlQuery := createUrlQuery()
 	workers, _ := createPool(POOL_SIZE, func(a CrawlFnArg) {
-		crawl(a.depth, a.url, a.workers, results, &count)
+		crawl(a.depth, a.url, a.workers, results, &count, urlQuery)
 	})
 
 	workers <- CrawlFnArg{1, "http://bbc.co.uk/", workers}
-	words := collect(results)
+	words := collect(results, urlQuery)
 	printTopN(words, 20)
 }
 
@@ -124,17 +142,33 @@ func printTopN(words WordCounts, n int) {
 	}
 }
 
-func collect(results ResultQueue) WordCounts {
-	urls := []string{}
+func createUrlQuery() chan UrlQuery {
+	urlq := make(chan UrlQuery)
+	go func() {
+		urls := []string{}
+		for q := range urlq {
+			if q.action == LOOKUP {
+				q.result <- contains(q.url, urls)
+			} else {
+				urls = append(urls, q.url)
+			}
+		}
+	}()
+	return urlq
+}
+
+func collect(results ResultQueue, urlQuery chan UrlQuery) WordCounts {
 	words := WordCounts{}
 	uniqueVisits := 0
 	pageVisits := 0
 	for page := range results {
 		log.Println("Update on:", page.url)
 		pageVisits += 1
-		if !contains(page.url, urls) {
+		urlExists := make(chan bool)
+		urlQuery <- UrlQuery{LOOKUP, page.url, urlExists}
+		if !<-urlExists {
 			uniqueVisits += 1
-			urls = append(urls, page.url)
+			urlQuery <- UrlQuery{ADD, page.url, nil}
 			words = combine(words, page.words)
 		} else {
 			log.Println("Already seen:", page.url)
