@@ -24,7 +24,7 @@ func parsePage(depth int, base, url string, results CountQueue, queryCount *int6
 	log.Println("Sending:", url)
 	results <- words
 
-	if depth < MAX_DEPTH {
+	if depth < *maxDepth {
 		links := findLinks(base, root)
 		numLinks := int64(len(links))
 		log.Println("Found", numLinks, "links in", url)
@@ -53,8 +53,14 @@ func findLinks(base string, root *xmlpath.Node) []string {
 	for iter.Next() {
 		node := iter.Node()
 		link := node.String()
+		link = strings.TrimSpace(link)
 		if isInterestingLink(link) {
 			result = append(result, base+link)
+		} else if strings.HasPrefix(link, base) {
+			log.Println("Using full link:", link)
+			result = append(result, link)
+		} else {
+			log.Println("Ignoring:", link)
 		}
 	}
 	return result
