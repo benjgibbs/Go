@@ -10,39 +10,35 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"sync"
 	"sync/atomic"
 )
 
 const MAX_DEPTH = 3
 const POOL_SIZE = 16
 
-const (
-	LOOKUP = 0
-	ADD    = 1
-)
-
 type UrlQuery struct {
-	action int
-	url    string
-	result chan bool
+	urls  []string
+	depth int
 }
 
-type CrawlFnArg struct {
-	depth   int
-	url     string
-	workers ArgQueue
-}
-
-type Result struct {
+type ParseParams struct {
+	depth int
+	base  string
 	url   string
-	words WordCounts
 }
 
 type WordCount struct {
 	word  string
 	count int
 }
+
+type WordCounts map[string]int
+
+type CountQueue chan WordCounts
+type PageParseQueue chan ParseParams
+type QueryQueue chan UrlQuery
+
+type WorkerFunc func(a ParseParams)
 
 type WordCountList []WordCount
 
@@ -57,11 +53,6 @@ func (wcl WordCountList) Less(i, j int) bool {
 func (wcl WordCountList) Swap(i, j int) {
 	wcl[i], wcl[j] = wcl[j], wcl[i]
 }
-
-type WordCounts map[string]int
-type ResultQueue chan Result
-type ArgQueue chan CrawlFnArg
-type CrawlFn func(a CrawlFnArg)
 
 func failWith(err error) {
 	if err != nil {
@@ -84,49 +75,62 @@ func fromFile() io.Reader {
 	return file
 }
 
-func crawl(depth int, url string, workers ArgQueue, results ResultQueue, count *int64, urlQuery chan UrlQuery) {
+func parsePage(depth int, base, url string, results CountQueue, queryCount *int64, urlQuery QueryQueue) {
 	log.Println("Crawling:", url, "at depth:", depth)
 	reader := fromUrl(url)
 	root, err := xmlpath.ParseHTML(reader)
 	failWith(err)
 	words := countWords(root)
 	log.Println("Sending:", url)
-	results <- Result{url, words}
-	if depth < MAX_DEPTH {
-		links := findLinks(root)
-		log.Println("Found", len(links), "links in", url)
-		for _, link := range links {
-			urlExists := make(chan bool)
-			urlQuery <- UrlQuery{LOOKUP, link, urlExists}
-			if !<-urlExists {
-				atomic.AddInt64(count, 1)
-				go func() {
-					workers <- CrawlFnArg{depth + 1, url + link, workers}
-				}()
-			} else {
-				log.Println("Skipping", url, " Already exists")
-			}
+	results <- words
 
-		}
+	if depth < MAX_DEPTH {
+		links := findLinks(base, root)
+		numLinks := int64(len(links))
+		log.Println("Found", numLinks, "links in", url)
+		atomic.AddInt64(queryCount, numLinks)
+		urlQuery <- UrlQuery{links, depth}
 	}
-	count2 := atomic.AddInt64(count, -1)
-	log.Println("Current count:", count2)
-	if count2 == 0 {
+	count := atomic.AddInt64(queryCount, -1)
+	log.Println("Current count:", count)
+	if count == 0 {
 		close(results)
-		close(workers)
 	}
+}
+
+func createUrlQuery(base string, queryCount *int64, workers *PageParseQueue) QueryQueue {
+	urlq := make(QueryQueue)
+	go func() {
+		seenUrls := []string{}
+		for q := range urlq {
+			for _, url := range q.urls {
+				if contains(seenUrls, url) {
+					log.Println("Skipping", url, " Already exists")
+					atomic.AddInt64(queryCount, -1)
+				} else {
+					seenUrls = append(seenUrls, url)
+					go func() {
+						*workers <- ParseParams{q.depth + 1, base, url}
+					}()
+				}
+			}
+		}
+	}()
+	return urlq
 }
 
 func main() {
 	var count int64 = 1
-	results := make(ResultQueue)
-	urlQuery := createUrlQuery()
-	workers, _ := createPool(POOL_SIZE, func(a CrawlFnArg) {
-		crawl(a.depth, a.url, a.workers, results, &count, urlQuery)
+	results := make(CountQueue)
+	var workers PageParseQueue
+	url := "http://bbc.co.uk/"
+	urlQuery := createUrlQuery(url, &count, &workers)
+	workers = createPool(POOL_SIZE, func(a ParseParams) {
+		parsePage(a.depth, a.base, a.url, results, &count, urlQuery)
 	})
 
-	workers <- CrawlFnArg{1, "http://bbc.co.uk/", workers}
-	words := collect(results, urlQuery)
+	workers <- ParseParams{1, url, url}
+	words := collectCounts(results, urlQuery)
 	printTopN(words, 20)
 }
 
@@ -142,57 +146,29 @@ func printTopN(words WordCounts, n int) {
 	}
 }
 
-func createUrlQuery() chan UrlQuery {
-	urlq := make(chan UrlQuery)
-	go func() {
-		urls := []string{}
-		for q := range urlq {
-			if q.action == LOOKUP {
-				q.result <- contains(q.url, urls)
-			} else {
-				urls = append(urls, q.url)
-			}
-		}
-	}()
-	return urlq
-}
-
-func collect(results ResultQueue, urlQuery chan UrlQuery) WordCounts {
+func collectCounts(results CountQueue, urlQuery QueryQueue) WordCounts {
 	words := WordCounts{}
-	uniqueVisits := 0
 	pageVisits := 0
-	for page := range results {
-		log.Println("Update on:", page.url)
+	for update := range results {
 		pageVisits += 1
-		urlExists := make(chan bool)
-		urlQuery <- UrlQuery{LOOKUP, page.url, urlExists}
-		if !<-urlExists {
-			uniqueVisits += 1
-			urlQuery <- UrlQuery{ADD, page.url, nil}
-			words = combine(words, page.words)
-		} else {
-			log.Println("Already seen:", page.url)
-		}
+		words = combine(words, update)
 	}
-	log.Println("Unique visits:", uniqueVisits, "Total visits:", pageVisits)
+	log.Println("Page visits:", pageVisits)
 	return words
 }
 
-func createPool(sz int, f CrawlFn) (ArgQueue, sync.WaitGroup) {
-	queue := make(ArgQueue)
-	wg := sync.WaitGroup{}
+func createPool(sz int, f WorkerFunc) PageParseQueue {
+	queue := make(PageParseQueue)
 	for i := 0; i < sz; i++ {
-		wg.Add(1)
 		go func(i int) {
 			for a := range queue {
 				log.Println("Starting", a, "on worker", i)
 				f(a)
 				log.Println("Worker", i, "Finished")
 			}
-			wg.Done()
 		}(i)
 	}
-	return queue, wg
+	return queue
 }
 
 func combine(a, b WordCounts) WordCounts {
@@ -202,7 +178,7 @@ func combine(a, b WordCounts) WordCounts {
 	return b
 }
 
-func contains(s string, ss []string) bool {
+func contains(ss []string, s string) bool {
 	for _, x := range ss {
 		if x == s {
 			return true
@@ -219,7 +195,7 @@ func isInterestingLink(link string) bool {
 		!strings.HasPrefix(link, "#")
 }
 
-func findLinks(root *xmlpath.Node) []string {
+func findLinks(base string, root *xmlpath.Node) []string {
 	path := xmlpath.MustCompile("//a/@href")
 	result := []string{}
 	iter := path.Iter(root)
@@ -227,7 +203,7 @@ func findLinks(root *xmlpath.Node) []string {
 		node := iter.Node()
 		link := node.String()
 		if isInterestingLink(link) {
-			result = append(result, link)
+			result = append(result, base+link)
 		}
 	}
 	return result
@@ -242,9 +218,11 @@ func countWords(root *xmlpath.Node) WordCounts {
 		for _, w := range strings.Split(node.String(), " ") {
 			w = strings.ToLower(w)
 			w = strings.TrimFunc(w, func(r rune) bool {
-				return !(r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')
+				return !(r >= 'a' && r <= 'z')
 			})
-			words[w] += 1
+			if len(w) > 0 {
+				words[w] += 1
+			}
 		}
 	}
 	return words
