@@ -10,7 +10,7 @@ import (
 
 const nrePort = 61613
 
-type NREUpdates chan Pport
+type NREUpdates chan []byte
 
 type NREFeed struct {
 	sub *stomp.Subscription
@@ -45,7 +45,7 @@ func (feed *NREFeed) Subscribe(cfg Cfg) NREUpdates {
 					str = append(str, buff[:n]...)
 				}
 			}
-			results <- *ToStructs([]byte(str))
+			results <- str
 			err = feed.con.Ack(msg)
 			failIf(err)
 		}
@@ -54,7 +54,10 @@ func (feed *NREFeed) Subscribe(cfg Cfg) NREUpdates {
 }
 
 func (feed *NREFeed) Unsubscribe() {
-	err := feed.sub.Unsubscribe()
-	failIf(err)
-	feed.con.Disconnect()
+	if feed.sub != nil {
+		err := feed.sub.Unsubscribe()
+		failIf(err)
+	} else if feed.con != nil {
+		feed.con.Disconnect()
+	}
 }
