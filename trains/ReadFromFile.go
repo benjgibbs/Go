@@ -10,21 +10,21 @@ import (
 func ReadFromFile(fileName string, msBetweenUpdates int) NREUpdates {
 	f, err := os.Open(fileName)
 	failIf(err)
-
 	r := bufio.NewReader(f)
-
 	result := make(NREUpdates)
 
-	fmt.Println("Reading from", fileName)
-	scanner := bufio.NewScanner(r)
+	delim := byte('\n')
+	fmt.Println("Using delim: ", delim)
 	go func() {
-		for scanner.Scan() {
-			line := scanner.Bytes()
-			result <- line
+		for {
+			line, err := r.ReadBytes(delim)
+			if err != nil || len(line) == 0 {
+				break
+			}
+			result <- line[:len(line)-1]
 			time.Sleep(time.Duration(msBetweenUpdates) * time.Millisecond)
 		}
 		close(result)
-		failIf(scanner.Err())
 	}()
 	return result
 }

@@ -22,7 +22,7 @@ func Test_XmlConversion(t *testing.T) {
 					 </TS>
 				 </uR> 
 			 </Pport>`)
-	pport := toStructs(xml)
+	pport := XmlToStructs(xml)
 	t.Log(pport)
 	if pport.Ts != "2016-02-10T18:42:57.8582793Z" {
 		t.Error("Bad time: ", pport.Ts)
@@ -98,7 +98,7 @@ func Test_ManyLocations(t *testing.T) {
 				</TS>
 			</uR>
 		</Pport>`)
-	pport := toStructs(xml)
+	pport := XmlToStructs(xml)
 	numLocs := len(pport.UR.TS.Locations)
 	if numLocs != 12 {
 		t.Error("Not the right number of locations: ", numLocs)

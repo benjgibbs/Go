@@ -24,7 +24,7 @@ const (
 	CFG_FILE       = "etc/trains.gcfg"
 	DAT_FILE       = "var/darwin.dat"
 	DAT_FILE_SIZE  = 1000
-	MS_GAP         = 10
+	MS_GAP         = 1
 )
 
 var mode int

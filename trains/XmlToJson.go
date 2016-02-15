@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/xml"
+	"log"
 )
 
 type Location struct {
@@ -45,6 +46,9 @@ type Pport struct {
 func XmlToStructs(xmlBytes []byte) *Pport {
 	data := &Pport{}
 	err := xml.Unmarshal(xmlBytes, data)
-	failIf(err)
+	if err != nil {
+		log.Printf("Failed to parse:\n%s\nError is %s ",
+			string(xmlBytes), err)
+	}
 	return data
 }
