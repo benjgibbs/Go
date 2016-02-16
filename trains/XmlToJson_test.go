@@ -27,6 +27,38 @@ func Test_XmlConversion(t *testing.T) {
 	if pport.Ts != "2016-02-10T18:42:57.8582793Z" {
 		t.Error("Bad time: ", pport.Ts)
 	}
+	if pport.Ur.Deactivated != nil {
+		t.Error("Deactivated should be nil but is", pport.Ur.Deactivated)
+	}
+	if pport.Ur.Ts == nil {
+		t.Error("Ts in nil")
+	}
+
+	if pport.Ur.Ts.Locations[0].Tpl != "BSNGSTK" {
+		t.Error("Expecing Basingstoke")
+	}
+
+	if *pport.Ur.Ts.Locations[0].Pta != "18:53" {
+		t.Error("Expecing 18:53")
+	}
+}
+
+func Test_Deactivated(t *testing.T) {
+
+	xml := []byte(
+		`<?xml version="1.0" encoding="UTF-8"?>
+		<Pport xmlns="http://www.thalesgroup.com/rtti/PushPort/v12" ts="2016-02-14T14:17:00.7083652Z" version="12.0">
+			<uR updateOrigin="Darwin">
+				<deactivated rid="201602142630790"/>
+			</uR>
+		</Pport>`)
+	pport := XmlToStructs(xml)
+	if pport.Ur.Deactivated.Rid != "201602142630790" {
+		t.Error("Unable to pass deactivated", pport)
+	}
+	if pport.Ur.Ts != nil {
+		t.Error("This is a deactivated update there should be no TS")
+	}
 }
 
 func Test_StructToXml(t *testing.T) {
@@ -99,7 +131,7 @@ func Test_ManyLocations(t *testing.T) {
 			</uR>
 		</Pport>`)
 	pport := XmlToStructs(xml)
-	numLocs := len(pport.UR.TS.Locations)
+	numLocs := len(pport.Ur.Ts.Locations)
 	if numLocs != 12 {
 		t.Error("Not the right number of locations: ", numLocs)
 	}
