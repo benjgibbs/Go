@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"time"
 )
 
@@ -18,6 +19,7 @@ func Find(locs *[]Location, name string) (bool, *Location) {
 }
 
 type Times struct {
+	station      string
 	schedArrive  time.Time
 	actualArrive time.Time
 	schedDepart  time.Time
@@ -32,13 +34,36 @@ type Journey struct {
 	lateReason *int
 }
 
+type StopList []Times
+
+func (ts StopList) Len() int {
+	return len(ts)
+}
+func (ts StopList) Less(i, j int) bool {
+	return ts[i].actualDepart.Sub(ts[j].actualDepart) < 0.0
+}
+func (ts StopList) Swap(i, j int) {
+	ts[i], ts[j] = ts[j], ts[i]
+}
+
 func PrintJourney(j Journey) {
 	fmt.Println("Journey - Rid:", j.id)
 	if j.lateReason != nil {
 		fmt.Println("Late Reason:", j.lateReason)
 	}
-	for station, times := range j.stops {
-		fmt.Printf("%-10sArr: %s / %s. Dep: %s / %s. %.0f/%.0f seconds late\n", station,
+
+	stops := make(StopList, len(j.stops))
+
+	i := 0
+	for _, stop := range j.stops {
+		stops[i] = *stop
+		i++
+	}
+
+	sort.Sort(stops)
+	for _, times := range stops {
+		fmt.Printf("%-10sArr: %s / %s. Dep: %s / %s. %.0f/%.0f seconds late\n",
+			times.station,
 			times.schedArrive.Format(HoursMinsSecs),
 			times.actualArrive.Format(HoursMinsSecs),
 			times.schedDepart.Format(HoursMinsSecs),
@@ -69,7 +94,7 @@ func (j Journey) Update(ts *TS) Journey {
 			continue
 		}
 		if _, ok := j.stops[loc.Tpl]; !ok {
-			j.stops[loc.Tpl] = &Times{}
+			j.stops[loc.Tpl] = &Times{station: loc.Tpl}
 		}
 		times := j.stops[loc.Tpl]
 
