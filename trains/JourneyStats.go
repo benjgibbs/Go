@@ -39,9 +39,11 @@ type StopList []Times
 func (ts StopList) Len() int {
 	return len(ts)
 }
+
 func (ts StopList) Less(i, j int) bool {
 	return ts[i].actualDepart.Sub(ts[j].actualDepart) < 0.0
 }
+
 func (ts StopList) Swap(i, j int) {
 	ts[i], ts[j] = ts[j], ts[i]
 }
