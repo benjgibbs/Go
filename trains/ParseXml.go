@@ -54,7 +54,7 @@ type Pport struct {
 	} `xml:"uR"`
 }
 
-func XmlToStructs(xmlBytes []byte) *Pport {
+func ParsePportXml(xmlBytes []byte) *Pport {
 	data := &Pport{}
 	err := xml.Unmarshal(xmlBytes, data)
 	if err != nil {

@@ -22,7 +22,7 @@ func Test_XmlConversion(t *testing.T) {
 					 </TS>
 				 </uR> 
 			 </Pport>`)
-	pport := XmlToStructs(xml)
+	pport := ParsePportXml(xml)
 	t.Log(pport)
 	if pport.Ts != "2016-02-10T18:42:57.8582793Z" {
 		t.Error("Bad time: ", pport.Ts)
@@ -52,7 +52,7 @@ func Test_Deactivated(t *testing.T) {
 				<deactivated rid="201602142630790"/>
 			</uR>
 		</Pport>`)
-	pport := XmlToStructs(xml)
+	pport := ParsePportXml(xml)
 	if pport.Ur.Deactivated.Rid != "201602142630790" {
 		t.Error("Unable to pass deactivated", pport)
 	}
@@ -130,7 +130,7 @@ func Test_ManyLocations(t *testing.T) {
 				</TS>
 			</uR>
 		</Pport>`)
-	pport := XmlToStructs(xml)
+	pport := ParsePportXml(xml)
 	numLocs := len(pport.Ur.Ts.Locations)
 	if numLocs != 12 {
 		t.Error("Not the right number of locations: ", numLocs)

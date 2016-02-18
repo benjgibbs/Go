@@ -18,7 +18,7 @@ func Find(locs *[]Location, name string) (bool, *Location) {
 	return false, nil
 }
 
-type Times struct {
+type StationTimes struct {
 	station      string
 	schedArrive  time.Time
 	actualArrive time.Time
@@ -26,7 +26,7 @@ type Times struct {
 	actualDepart time.Time
 }
 
-type Stops map[string]*Times
+type Stops map[string]*StationTimes
 
 type Journey struct {
 	id         string
@@ -34,7 +34,7 @@ type Journey struct {
 	lateReason *int
 }
 
-type StopList []Times
+type StopList []StationTimes
 
 func (ts StopList) Len() int {
 	return len(ts)
@@ -96,7 +96,7 @@ func (j Journey) Update(ts *TS) Journey {
 			continue
 		}
 		if _, ok := j.stops[loc.Tpl]; !ok {
-			j.stops[loc.Tpl] = &Times{station: loc.Tpl}
+			j.stops[loc.Tpl] = &StationTimes{station: loc.Tpl}
 		}
 		times := j.stops[loc.Tpl]
 
@@ -122,11 +122,11 @@ func CreateJourney(ts *TS) Journey {
 	return result
 }
 
-func SaveStatsFor(place string, feed NREUpdates) {
-	fmt.Println("Saving stats...")
+func PrintStats(feed NREUpdates) {
+	fmt.Println("Printing Stats...")
 	journies := make(map[string]Journey)
 	for xml := range feed {
-		update := XmlToStructs(xml)
+		update := ParsePportXml(xml)
 
 		if ur := update.Ur; ur != nil {
 			if deact := ur.Deactivated; deact != nil {

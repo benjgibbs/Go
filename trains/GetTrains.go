@@ -54,7 +54,7 @@ func main() {
 }
 
 func ProcessFeed(feed NREUpdates) {
-	SaveStatsFor("WNCHSTR", feed)
+	PrintStats(feed)
 }
 
 func init() {
