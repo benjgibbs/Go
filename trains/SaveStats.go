@@ -31,11 +31,26 @@ func (m *MongoCollection) Close() {
 	m.session.Close()
 }
 
+type Id struct {
+	Rid     string
+	Station string
+}
+
 type JourneyStopPoint struct {
-	rid, station, platform    string
-	lateReason                *int
-	schedArrive, actualArrive time.Time
-	schedDepart, actualDepart time.Time
+	Platform     string
+	LateReason   int
+	SchedArrive  time.Time
+	ActualArrive time.Time
+	SchedDepart  time.Time
+	ActualDepart time.Time
+}
+type Update struct {
+	Id  Id
+	jsp JourneyStopPoint
+}
+
+func Key(rid, station string) bson.M {
+	return bson.M{"_id": bson.M{"rid": rid, "station": station}}
 }
 
 func (m *MongoCollection) updateRecords(ts *TS) {
@@ -44,7 +59,7 @@ func (m *MongoCollection) updateRecords(ts *TS) {
 		lateReason = &ts.LateReason.Reason
 	}
 
-	updates := []JourneyStopPoint{}
+	updates := []Update{}
 	for _, loc := range ts.Locations {
 		if loc.Pass != nil || loc.Wtp != nil {
 			//Ignore passing points
@@ -52,43 +67,47 @@ func (m *MongoCollection) updateRecords(ts *TS) {
 		}
 
 		jsps := []JourneyStopPoint{}
-		iter := m.col.Find(bson.M{"rid": ts.Rid, "station": loc.Tpl}).Iter()
+		iter := m.col.Find(Key(ts.Rid, loc.Tpl)).Iter()
 		iter.All(&jsps)
 		err := iter.Close()
 		failIf(err)
 		var jsp JourneyStopPoint
 		switch len(jsps) {
 		case 0:
-			jsp = JourneyStopPoint{rid: ts.Rid, station: loc.Tpl}
+			jsp = JourneyStopPoint{}
 		case 1:
 			jsp = jsps[0]
 		default:
-			log.Fatal("Should only get one result for", ts.Rid, loc.Tpl,
-				"Got", len(jsps))
+			log.Fatalf("Should only get one result for %s/%s.  Got %d.\n %+v`n",
+				ts.Rid, loc.Tpl, len(jsps), jsps)
 		}
 		if lateReason != nil {
-			jsp.lateReason = lateReason
+			jsp.LateReason = *lateReason
 		}
 		if loc.Plat != nil {
-			jsp.platform = loc.Plat.Plat
+			jsp.Platform = loc.Plat.Plat
 		}
 		if loc.Pta != nil {
-			jsp.schedArrive = ParseTime(*loc.Pta)
+			jsp.SchedArrive = ParseTime(*loc.Pta)
 		}
 		if loc.Ptd != nil {
-			jsp.schedDepart = ParseTime(*loc.Ptd)
+			jsp.SchedDepart = ParseTime(*loc.Ptd)
 		}
 		if loc.Wta != nil {
-			jsp.actualArrive = ParseTime(*loc.Wta)
+			jsp.ActualArrive = ParseTime(*loc.Wta)
 		}
 		if loc.Wtd != nil {
-			jsp.actualDepart = ParseTime(*loc.Wtd)
+			jsp.ActualDepart = ParseTime(*loc.Wtd)
 		}
-		updates = append(updates, jsp)
+		id := Id{ts.Rid, loc.Tpl}
+		updates = append(updates, Update{id, jsp})
 	}
 	log.Printf("Updating %d stops for RID: %s.\n", len(updates), ts.Rid)
-	err := m.col.Insert(updates)
-	failIf(err)
+	for _, upd := range updates {
+		log.Printf("%+v\n", upd)
+		_, err := m.col.Upsert(Key(upd.Id.Rid, upd.Id.Station), upd.jsp)
+		failIf(err)
+	}
 }
 
 func (m *MongoCollection) SaveStream(feed NREUpdates) {

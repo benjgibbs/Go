@@ -13,9 +13,9 @@ type Person struct {
 func TestExmaple(t *testing.T) {
 
 	m := Connect("trains_test", "test_people")
-	defer m.Close()
-	defer m.db.DropDatabase()
-	defer m.col.DropCollection()
+	//	defer m.Close()
+	//	defer m.db.DropDatabase()
+	//	defer m.col.DropCollection()
 
 	err := m.col.Insert(&Person{"Ale", "+55 53 8116 9639"}, &Person{"Cla", "+55 53 8402 8510"})
 	failIf(err)
@@ -31,8 +31,13 @@ func TestExmaple(t *testing.T) {
 func TestTrainUpdate(t *testing.T) {
 	m := Connect("trains_test", "test_journies")
 	defer m.Close()
-	//defer m.db.DropDatabase()
-	//defer m.col.DropCollection()
-	updates := ReadFromFile("/Users/ben/Git/GoCode/var/darwin.dat", 0)
+	m.db.DropDatabase()
+	m.col.DropCollection()
+	updates := ReadFromFile("/Users/ben/Git/GoCode/var/one.dat", 0)
 	m.SaveStream(updates)
+	result := JourneyStopPoint{}
+	err := m.col.Find(Key("201602142632334", "ELGH")).One(&result)
+	if err != nil {
+		t.Error("Got error: ", err)
+	}
 }
