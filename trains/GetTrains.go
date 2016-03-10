@@ -54,7 +54,8 @@ func main() {
 }
 
 func ProcessFeed(feed NREUpdates) {
-	PrintStats(feed)
+	db := NewDB("var/trains.db")
+	db.SaveStream(feed)
 }
 
 func init() {
