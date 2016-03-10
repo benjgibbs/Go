@@ -141,7 +141,7 @@ func (db *DB) updateRecords(ts *TS) {
 }
 
 func (db *DB) SaveStream(feed NREUpdates) {
-	log.Println("Saving stats to Sqlite running on:", MongoHost)
+	log.Println("Saving stats to Sqlite file:", db.dbName)
 
 	for xml := range feed {
 		update := ParsePportXml(xml)
