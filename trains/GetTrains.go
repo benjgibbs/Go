@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"gopkg.in/gcfg.v1"
+	"log"
 )
 
 const server = "datafeeds.nationalrail.co.uk"
@@ -35,20 +35,20 @@ func main() {
 	failIf(err)
 	switch mode {
 	case WRITE_TO_FILE:
-		fmt.Printf("Writing to file %s.", DAT_FILE)
+		log.Printf("Writing to file %s.", DAT_FILE)
 		feed := NREFeed{}
 		updates := feed.Subscribe(cfg)
 		defer feed.Unsubscribe()
 		WriteToFile(DAT_FILE_SIZE, DAT_FILE, updates)
 	case READ_FROM_FILE:
-		fmt.Printf("Reading from file %s.\n", DAT_FILE)
+		log.Printf("Reading from file %s.\n", DAT_FILE)
 		updates := ReadFromFile(DAT_FILE, MS_GAP)
 		ProcessFeed(updates)
 	case READ_FROM_NRE:
-		fmt.Printf("Writing to file %s.", DAT_FILE)
-		feed := NREFeed{}
+		log.Printf("Writing to file %s.", DAT_FILE)
+		feed := new(NREFeed)
 		updates := feed.Subscribe(cfg)
-		defer feed.Unsubscribe()
+		//defer feed.Unsubscribe()
 		ProcessFeed(updates)
 	}
 }
@@ -67,6 +67,7 @@ func init() {
 	} else if *write {
 		mode = WRITE_TO_FILE
 	} else {
+		log.Println("Reading from NRE")
 		mode = READ_FROM_NRE
 	}
 }
