@@ -25,6 +25,7 @@ func (feed *NREFeed) Subscribe(cfg Cfg) NREUpdates {
 	failIf(err)
 
 	feed.sub, err = feed.con.Subscribe("/queue/"+cfg.Nre.Queue, stomp.AckClient)
+	log.Println("Subscribed...")
 	failIf(err)
 	results := make(NREUpdates)
 	go func() {
@@ -45,6 +46,7 @@ func (feed *NREFeed) Subscribe(cfg Cfg) NREUpdates {
 					str = append(str, buff[:n]...)
 				}
 			}
+			log.Println("Rxed: ", str)
 			results <- str
 			err = feed.con.Ack(msg)
 			failIf(err)
@@ -54,6 +56,7 @@ func (feed *NREFeed) Subscribe(cfg Cfg) NREUpdates {
 }
 
 func (feed *NREFeed) Unsubscribe() {
+	log.Println("Unsubscribing from ", *feed)
 	if feed.sub != nil {
 		err := feed.sub.Unsubscribe()
 		failIf(err)
