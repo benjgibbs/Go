@@ -122,10 +122,10 @@ func CreateJourney(ts *TS) Journey {
 	return result
 }
 
-func PrintStats(feed NREUpdates) {
+func PrintStats(feed *NREUpdates) {
 	fmt.Println("Printing Stats...")
 	journies := make(map[string]Journey)
-	for xml := range feed {
+	for xml := range *feed {
 		update := ParsePportXml(xml)
 
 		if ur := update.Ur; ur != nil {

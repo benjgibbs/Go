@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func ReadFromFile(fileName string, msBetweenUpdates int) NREUpdates {
+func ReadFromFile(fileName string, msBetweenUpdates int) *NREUpdates {
 	f, err := os.Open(fileName)
 	failIf(err)
 	r := bufio.NewReader(f)
@@ -26,5 +26,5 @@ func ReadFromFile(fileName string, msBetweenUpdates int) NREUpdates {
 		}
 		close(result)
 	}()
-	return result
+	return &result
 }

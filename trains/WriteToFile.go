@@ -6,13 +6,13 @@ import (
 	"os"
 )
 
-func WriteToFile(numRecords int, fileName string, updates NREUpdates) {
+func WriteToFile(numRecords int, fileName string, updates *NREUpdates) {
 	f, err := os.Create(fileName)
 	failIf(err)
 	w := bufio.NewWriter(f)
 	defer w.Flush()
 
-	for update := range updates {
+	for update := range *updates {
 		if numRecords == 0 {
 			break
 		}

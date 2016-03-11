@@ -140,10 +140,10 @@ func (db *DB) updateRecords(ts *TS) {
 	}
 }
 
-func (db *DB) SaveStream(feed NREUpdates) {
+func (db *DB) SaveStream(feed *NREUpdates) {
 	log.Println("Saving stats to Sqlite file:", db.dbName)
 
-	for xml := range feed {
+	for xml := range *feed {
 		update := ParsePportXml(xml)
 		if ur := update.Ur; ur != nil {
 			if ts := ur.Ts; ts != nil {

@@ -53,7 +53,7 @@ func main() {
 	}
 }
 
-func ProcessFeed(feed NREUpdates) {
+func ProcessFeed(feed *NREUpdates) {
 	db := NewDB("var/trains.db")
 	db.SaveStream(feed)
 }
