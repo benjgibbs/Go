@@ -1,10 +1,11 @@
 package main
 
 import (
-	"gopkg.in/xmlpath.v2"
 	"log"
 	"strings"
 	"sync/atomic"
+
+	"gopkg.in/xmlpath.v2"
 )
 
 type ParseParams struct {
@@ -78,7 +79,7 @@ func countWords(root *xmlpath.Node) WordCounts {
 				return !(r >= 'a' && r <= 'z')
 			})
 			if len(w) > 0 {
-				words[w] += 1
+				words[w]++
 			}
 		}
 	}
